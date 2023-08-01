@@ -68,7 +68,7 @@ def run_streamlit():
     user_input = get_user_input_query()
     if user_input:
         # Search the database for a response based on user input and update the session state
-        db = dataloader.load_deeplake(activeloop_org_id=st.session_state['activeloop_id'], embeddings=OpenAIEmbeddings(), token=st.session_state['activeloop_token'])
+        db = dataloader.load_deeplake(activeloop_org_id=st.session_state['activeloop_id'], embeddings=OpenAIEmbeddings(openai_api_key=st.session_state['openai_api_key']), token=st.session_state['activeloop_token'])
         output = search_db(user_input, db)
         st.session_state.past.append(user_input)
         response = str(output["result"])

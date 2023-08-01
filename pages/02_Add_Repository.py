@@ -29,6 +29,6 @@ if __name__ == '__main__':
         with st.spinner("Parsing the repository..."):
             texts = git_clone_repository_and_return_files(repo_url=repo_url)
             if texts:
-                db = dataloader.create_deeplake(activeloop_org_id=st.session_state['activeloop_id'], embeddings=OpenAIEmbeddings(disallowed_special=()), texts=texts, token=st.session_state['activeloop_token'])
+                db = dataloader.create_deeplake(activeloop_org_id=st.session_state['activeloop_id'], embeddings=OpenAIEmbeddings(disallowed_special=(),openai_api_key=st.session_state['openai_api_key']), texts=texts, token=st.session_state['activeloop_token'])
                 if db:
                     st.write('Repository added successfully!')
