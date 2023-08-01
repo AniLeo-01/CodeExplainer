@@ -19,7 +19,10 @@ def git_clone_repository_and_return_files(repo_url: str):
 
 
 if __name__ == '__main__':
+    st.title("Add Repository")
     initialize_session_state()
+    if st.session_state['auth_ok'] == False:
+        st.write("Please complete the authentication to continue...")
     authentication_and_options_side_bar()
     with st.form(key='repository_form'):
         repo_url = st.text_input(label='Repository URL', key="repo_url")

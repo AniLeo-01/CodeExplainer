@@ -80,6 +80,8 @@ def run_streamlit():
 # Run the main function when the script is executed
 if __name__ == "__main__":
     initialize_session_state()
+    if st.session_state['auth_ok'] == False:
+        st.write("Please complete the authentication to continue...")
     st.set_option("client.showErrorDetails", True)
     st.set_page_config(
         page_title=APP_NAME,
