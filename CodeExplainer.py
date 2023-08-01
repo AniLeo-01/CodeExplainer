@@ -48,7 +48,7 @@ def get_user_input_query():
 def search_db(user_input, db):
     print(user_input)
     retriever = dataloader.get_deeplake_retriever(db)
-    model = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
+    model = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0, openai_api_key=st.session_state['openai_api_key'])
     qa = RetrievalQA.from_llm(model, retriever=retriever, return_source_documents=True)
     return qa({"query": user_input})
 
