@@ -2,14 +2,15 @@ import os
 from langchain.document_loaders import TextLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import DeepLake
+from typing import Optional
 
-def create_deeplake(activeloop_org_id: str, embeddings, texts):
-    db = DeepLake(dataset_path=f"hub://{activeloop_org_id}/CodeExplainer", embedding_function=embeddings)
+def create_deeplake(activeloop_org_id: str, embeddings, texts, token: Optional[str]):
+    db = DeepLake(dataset_path=f"hub://{activeloop_org_id}/CodeExplainer", embedding_function=embeddings, token=token)
     db.add_documents(texts)
     return db
 
-def load_deeplake(activeloop_org_id: str, embeddings):
-    db = DeepLake(dataset_path=f"hub://{activeloop_org_id}/CodeExplainer", embedding_function=embeddings, read_only=True)
+def load_deeplake(activeloop_org_id: str, embeddings, token: Optional[str]):
+    db = DeepLake(dataset_path=f"hub://{activeloop_org_id}/CodeExplainer", embedding_function=embeddings, read_only=True, token=token)
     return db
 
 def index_and_split_codebase(repository_name: str):
