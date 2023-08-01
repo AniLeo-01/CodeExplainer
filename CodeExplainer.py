@@ -7,8 +7,40 @@ from langchain.chains import RetrievalQA
 from langchain.embeddings import OpenAIEmbeddings
 import os
 from dotenv import load_dotenv
+import openai
+import deeplake
+from logger import logger
+from authentication import authentication_form
+from config.config import PROJECT_URL, APP_NAME, PAGE_ICON
 
 load_dotenv()
+
+
+def initialize_session_state():
+    # Initialise all session state variables with defaults
+    SESSION_DEFAULTS = {
+        "auth_ok": False,
+        "openai_api_key": None,
+        "activeloop_token": None,
+        "activeloop_id": None
+    }
+
+    for k, v in SESSION_DEFAULTS.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
+
+def app_can_be_started():
+    # Only start App if authentication is OK or Local Mode
+    return st.session_state["auth_ok"]
+
+def authentication_and_options_side_bar():
+    # Sidebar with Authentication and Advanced Options
+    with st.sidebar:
+        authentication_form()
+
+        st.info(f"Learn how it works [here]({PROJECT_URL})")
+        if not app_can_be_started():
+            st.stop()
 
 def get_user_input_query():
     return st.text_input(label='Enter your question', key="input")
@@ -26,31 +58,36 @@ def display_conversation(history):
         message(history["generated"][i], key=str(i))
 
 def run_streamlit():
-    # Initialize Streamlit app with a title
-    st.title(" CodeExplainer 👨‍💻💻")
-    db = dataloader.load_deeplake(activeloop_org_id=os.getenv('ACTIVELOOP_ORG_ID'), embeddings=OpenAIEmbeddings())
-    # Get user input from text input or audio transcription
-    user_input = get_user_input_query()
-
     # Initialize session state for generated responses and past messages
     if "generated" not in st.session_state:
         st.session_state["generated"] = ["Hi! Ask me any question related to your repositories and I'll answer them."]
     if "past" not in st.session_state:
         st.session_state["past"] = ["Hey there!"]
-        
-    # Search the database for a response based on user input and update the session state
+    # Display conversation history using Streamlit messages
+    
+    user_input = get_user_input_query()
     if user_input:
+        # Search the database for a response based on user input and update the session state
+        db = dataloader.load_deeplake(activeloop_org_id=st.session_state['activeloop_id'], embeddings=OpenAIEmbeddings(), token=st.session_state['activeloop_token'])
         output = search_db(user_input, db)
         st.session_state.past.append(user_input)
         response = str(output["result"])
         st.session_state.generated.append(response)
-
-    # Display conversation history using Streamlit messages
     if st.session_state["generated"]:
         display_conversation(st.session_state)
-    
-    st.sidebar.success("Navigation Menu")
+
 
 # Run the main function when the script is executed
 if __name__ == "__main__":
+    initialize_session_state()
+    st.set_option("client.showErrorDetails", True)
+    st.set_page_config(
+        page_title=APP_NAME,
+        page_icon=PAGE_ICON,
+        initial_sidebar_state="expanded",
+        layout="centered",
+    )
+    st.title(f'CodeExplainer {PAGE_ICON}')
+    authentication_and_options_side_bar()
+    # user_input = get_user_input_query()
     run_streamlit()
