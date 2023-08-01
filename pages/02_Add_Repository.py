@@ -3,6 +3,7 @@ import os
 import dataloader
 from langchain.embeddings import OpenAIEmbeddings
 from dotenv import load_dotenv
+from CodeExplainer import authentication_and_options_side_bar, initialize_session_state
 
 load_dotenv()
 
@@ -18,6 +19,8 @@ def git_clone_repository_and_return_files(repo_url: str):
 
 
 if __name__ == '__main__':
+    initialize_session_state()
+    authentication_and_options_side_bar()
     with st.form(key='repository_form'):
         repo_url = st.text_input(label='Repository URL', key="repo_url")
         submit_button = st.form_submit_button(label='Submit')
@@ -26,6 +29,6 @@ if __name__ == '__main__':
         with st.spinner("Parsing the repository..."):
             texts = git_clone_repository_and_return_files(repo_url=repo_url)
             if texts:
-                db = dataloader.create_deeplake(activeloop_org_id=os.getenv('ACTIVELOOP_ORG_ID'), embeddings=OpenAIEmbeddings(disallowed_special=()), texts=texts)
+                db = dataloader.create_deeplake(activeloop_org_id=st.session_state['activeloop_id'], embeddings=OpenAIEmbeddings(disallowed_special=()), texts=texts, token=st.session_state['activeloop_token'])
                 if db:
                     st.write('Repository added successfully!')
