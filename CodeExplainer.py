@@ -88,8 +88,13 @@ if __name__ == "__main__":
         layout="centered",
     )
     st.title(f'CodeExplainer {PAGE_ICON}')
+    st.write(
+        """Can't understand your codebase or need to understand a github repository? CodeExplainer is what you need! 
+        This application uses GPT-3.5 at it's heart to understand the codebase line-by-line so that you don't have to do the hardwork, and answers to all your questions related to the codebase.
+        """
+    )
     if st.session_state['auth_ok'] == False:
-        st.write("Please complete the authentication to continue...")
+        st.write(":red[Please complete the authentication to continue...]")
     authentication_and_options_side_bar()
     # user_input = get_user_input_query()
     run_streamlit()
