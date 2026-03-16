@@ -1,6 +1,6 @@
-# FastAPI Repo Chat Agent - System Walkthrough
+# GitHub Repo Chat Agent - System Walkthrough
 
-A multi-agent system that indexes, analyzes, and answers questions about the FastAPI codebase using a knowledge graph and LLM-powered reasoning.
+A multi-agent system that indexes, analyzes, and answers questions about **any GitHub repository** using a knowledge graph and LLM-powered reasoning. Includes a built-in web UI for repo indexing and chat.
 
 ---
 
@@ -9,10 +9,11 @@ A multi-agent system that indexes, analyzes, and answers questions about the Fas
 1. [System Architecture](#system-architecture)
 2. [Agent Design Decisions](#agent-design-decisions)
 3. [Setup and Installation](#setup-and-installation)
-4. [Indexing Process](#indexing-process)
-5. [Example Queries](#example-queries)
-6. [Agent Communication](#agent-communication)
-7. [Monitoring and Observability](#monitoring-and-observability)
+4. [Web UI](#web-ui)
+5. [Indexing Process](#indexing-process)
+6. [Example Queries](#example-queries)
+7. [Agent Communication](#agent-communication)
+8. [Monitoring and Observability](#monitoring-and-observability)
 
 ---
 
@@ -22,7 +23,7 @@ A multi-agent system that indexes, analyzes, and answers questions about the Fas
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Client (HTTP)                                   │
+│                       Client (Web UI or HTTP)                                │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
@@ -32,6 +33,9 @@ A multi-agent system that indexes, analyzes, and answers questions about the Fas
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
 │  │ /api/chat   │  │ /api/index  │  │ /api/agents │  │ /api/graph  │        │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │
+│  ┌──────────────────────────────────────────────────────────────────┐       │
+│  │  Static: /static/*  ·  Web UI: /                                 │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
 └─────────────────────────────────────────────────────────────────────────────┘
                                       │
                           (FastMCP Client - HTTP)
@@ -63,11 +67,11 @@ A multi-agent system that indexes, analyzes, and answers questions about the Fas
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| API Gateway | FastAPI + Uvicorn | HTTP entry point, request routing |
+| API Gateway | FastAPI + Uvicorn | HTTP entry point, request routing, Web UI |
 | Orchestrator Agent | FastMCP 2.12.0 (HTTP) | Query routing, agent coordination, response synthesis |
 | Graph Query Agent | FastMCP 2.12.0 (HTTP) + Neo4j | Execute Cypher queries, find entities |
 | Code Analyst Agent | FastMCP 2.12.0 (HTTP) + OpenAI | Explain code, analyze patterns |
-| Indexer Agent | FastMCP 2.12.0 (HTTP) + GitPython | Clone repos, parse AST, populate graph |
+| Indexer Agent | FastMCP 2.12.0 (HTTP) + GitPython | Clone any GitHub repo, parse AST, populate graph |
 | Knowledge Graph | Neo4j 5 | Store code entities and relationships |
 
 ### Data Flow
@@ -138,10 +142,10 @@ The orchestrator uses a two-stage approach:
     "agents": ["graph_query"]     # Which agents to call
 }
 
-# Stage 2: Entity Extraction  
+# Stage 2: Entity Extraction
 # Extracts specific entities and query type
 {
-    "entity_name": "FastAPI",
+    "entity_name": "Router",
     "query_type": "find_entity",  # find_entity, get_dependencies, find_related, general_query
     "relationship": null          # INHERITS_FROM, CALLS, IMPORTS, etc.
 }
@@ -153,7 +157,7 @@ When graph queries return no results, the system falls back to LLM knowledge:
 
 ```python
 if not has_real_data:
-    # Use LLM's training knowledge about FastAPI
+    # Use LLM's training knowledge about the codebase
     prompt = "The codebase search returned no results. Please answer based on your knowledge..."
 ```
 
@@ -175,7 +179,7 @@ git clone <repo-url>
 cd fastapi-repo-chat-agent
 
 # 2. Create environment file
-cp env.example .env
+cp .env.example .env
 # Edit .env and add your OPENAI_API_KEY
 
 # 3. Create shared.env for Docker
@@ -198,10 +202,13 @@ docker compose up -d
 # - orchestrator-agent (port 8004)
 # - api-gateway (port 8000)
 
-# 5. Check status
+# 5. Open the Web UI
+open http://localhost:8000
+
+# 6. Check status
 docker compose ps
 
-# 6. View logs
+# 7. View logs
 docker compose logs -f api-gateway
 ```
 
@@ -228,6 +235,8 @@ docker run -d \
 # 5. Run the API Gateway
 cd api-gateway
 uvicorn app.main:app --reload --port 8000
+
+# 6. Open http://localhost:8000 for the Web UI
 ```
 
 ### Environment Variables
@@ -239,8 +248,29 @@ uvicorn app.main:app --reload --port 8000
 | `NEO4J_URI` | Neo4j connection string | `bolt://localhost:7687` |
 | `NEO4J_USER` | Neo4j username | `neo4j` |
 | `NEO4J_PASSWORD` | Neo4j password | `password` |
-| `FASTAPI_REPO_URL` | Repository to index | FastAPI GitHub URL |
-| `REPO_DIR` | Local clone directory | `/tmp/fastapi-repo` |
+| `REPO_URL` | Default repository to index (can also be set via UI) | _(none)_ |
+| `REPO_DIR` | Base directory for cloned repositories | `/tmp/repo-cache` |
+
+---
+
+## Web UI
+
+The application includes a built-in web interface at `http://localhost:8000/`.
+
+### Features
+
+- **Repository Indexing**: Enter any GitHub URL and click "Index Repository"
+- **Progress Tracking**: Real-time status bar (running / completed / failed)
+- **Chat Interface**: Ask questions about the indexed codebase with session context
+- **Graph Statistics**: Live node and relationship counts
+- **Agent Health**: Auto-refreshing health status of all agents
+
+### Usage
+
+1. Open `http://localhost:8000`
+2. Enter a GitHub repository URL in the sidebar (e.g., `https://github.com/pallets/flask.git`)
+3. Click **Index Repository** and wait for completion
+4. Ask questions in the chat panel
 
 ---
 
@@ -253,21 +283,26 @@ uvicorn app.main:app --reload --port 8000
 │                      Indexing Pipeline                          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  1. Clone/Pull Repository                                       │
-│     └─→ git clone https://github.com/fastapi/fastapi.git       │
+│  1. Receive repo URL (from UI, API, or env var)                │
+│     └─→ e.g., https://github.com/pallets/flask.git            │
 │                                                                 │
-│  2. Discover Python Files                                       │
+│  2. Derive unique local directory                              │
+│     └─→ /tmp/repo-cache/flask-a1b2c3d4/                       │
+│                                                                 │
+│  3. Clone/Pull Repository (GitPython)                          │
+│                                                                 │
+│  4. Discover Python Files                                       │
 │     └─→ Find all *.py files recursively                        │
 │                                                                 │
-│  3. Parse AST (per file)                                        │
+│  5. Parse AST (per file, 3 concurrent)                         │
 │     └─→ ast.parse() → Extract classes, functions, imports      │
 │                                                                 │
-│  4. Create Graph Nodes                                          │
+│  6. Create Graph Nodes                                          │
 │     └─→ MERGE (f:File {path: $path})                           │
 │     └─→ MERGE (c:Class {name: $name, file: $path})             │
 │     └─→ MERGE (fn:Function {name: $name, file: $path})         │
 │                                                                 │
-│  5. Create Relationships                                        │
+│  7. Create Relationships                                        │
 │     └─→ (File)-[:CONTAINS]->(Class)                            │
 │     └─→ (File)-[:CONTAINS]->(Function)                         │
 │     └─→ (Class)-[:INHERITS_FROM]->(Class)                      │
@@ -280,8 +315,12 @@ uvicorn app.main:app --reload --port 8000
 ### Starting the Indexer
 
 ```bash
+# Via Web UI: Enter URL in sidebar and click "Index Repository"
+
 # Via API
-curl -X POST http://localhost:8000/api/index/start
+curl -X POST http://localhost:8000/api/index/start \
+  -H "Content-Type: application/json" \
+  -d '{"repo_url": "https://github.com/pallets/flask.git"}'
 
 # Response
 {"job_id": "a88f1e2f-a7bc-45f8-9a79-445c0acae726"}
@@ -319,7 +358,7 @@ curl http://localhost:8000/api/index/status/a88f1e2f-a7bc-45f8-9a79-445c0acae726
 
 ```cypher
 -- Find a class by name
-MATCH (c:Class {name: 'FastAPI'})
+MATCH (c:Class {name: 'Router'})
 RETURN c.name, c.file, c.start, c.end
 
 -- Find all classes that inherit from a base class
@@ -333,6 +372,9 @@ RETURN called.name
 -- Find imports in a file
 MATCH (f:File {name: 'routing.py'})-[:IMPORTS]->(i)
 RETURN i.module
+
+-- Count entities by type
+MATCH (n) RETURN labels(n), count(n)
 ```
 
 ---
@@ -341,63 +383,55 @@ RETURN i.module
 
 ### Simple Queries (Single Agent)
 
-**Query**: "What is the FastAPI class?"
+**Query**: "What is the Router class?"
 
 ```bash
 curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "What is the FastAPI class?"}'
+  -d '{"message": "What is the Router class?"}'
 ```
 
 **Agent Flow**:
 ```
 Orchestrator
   ├─→ Intent: "lookup"
-  ├─→ Entity: "FastAPI", Type: "find_entity"
+  ├─→ Entity: "Router", Type: "find_entity"
   ├─→ Graph Query Agent
-  │     └─→ MATCH (c:Class {name: 'FastAPI'}) RETURN c
-  │     └─→ Result: {file: "fastapi/applications.py", lines: 48-4669}
+  │     └─→ MATCH (c:Class {name: 'Router'}) RETURN c
+  │     └─→ Result: {file: "myproject/routing.py", lines: 10-120}
   └─→ Synthesis: Combines graph result with LLM knowledge
-```
-
-**Response** (excerpt):
-```json
-{
-    "session_id": "abc-123",
-    "response": "The FastAPI class is the core application class defined in fastapi/applications.py. It builds on Starlette and provides: - Automatic request/response validation using Pydantic - Dependency injection system - OpenAPI schema generation - Interactive documentation (Swagger UI, ReDoc)"
-}
 ```
 
 ---
 
 ### Medium Queries (2-3 Agents)
 
-**Query**: "What classes inherit from APIRouter?"
+**Query**: "What classes inherit from BaseModel?"
 
 ```bash
 curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "What classes inherit from APIRouter?"}'
+  -d '{"message": "What classes inherit from BaseModel?"}'
 ```
 
 **Agent Flow**:
 ```
 Orchestrator
   ├─→ Intent: "lookup"
-  ├─→ Entity: "APIRouter", Type: "find_related", Relationship: "INHERITS_FROM"
+  ├─→ Entity: "BaseModel", Type: "find_related", Relationship: "INHERITS_FROM"
   ├─→ Graph Query Agent
-  │     └─→ find_related("APIRouter", "INHERITS_FROM")
-  └─→ Synthesis: Explains APIRouter and any subclasses found
+  │     └─→ find_related("BaseModel", "INHERITS_FROM")
+  └─→ Synthesis: Explains BaseModel and any subclasses found
 ```
 
 ---
 
-**Query**: "Compare how Path and Query parameters are implemented"
+**Query**: "Compare how Path and Query parameters work"
 
 ```bash
 curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "Compare how Path and Query parameters are implemented"}'
+  -d '{"message": "Compare how Path and Query parameters work"}'
 ```
 
 **Agent Flow**:
@@ -406,8 +440,8 @@ Orchestrator
   ├─→ Intent: "compare"
   ├─→ Entities: "Path" (primary), "Query" (secondary)
   ├─→ Graph Query Agent (2 calls)
-  │     ├─→ find_entity("Path") → params.py, param_functions.py
-  │     └─→ find_entity("Query") → params.py, param_functions.py
+  │     ├─→ find_entity("Path")
+  │     └─→ find_entity("Query")
   ├─→ Code Analyst Agent
   │     └─→ explain_implementation("Path")
   └─→ Synthesis: Detailed comparison with file locations
@@ -417,12 +451,12 @@ Orchestrator
 
 ### Complex Queries (Multiple Agents + Synthesis)
 
-**Query**: "Explain the complete lifecycle of a FastAPI request"
+**Query**: "Explain the request handling flow"
 
 ```bash
 curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "Explain the complete lifecycle of a FastAPI request"}'
+  -d '{"message": "Explain the request handling flow"}'
 ```
 
 **Agent Flow**:
@@ -436,80 +470,23 @@ Orchestrator
   └─→ Synthesis: Comprehensive explanation using LLM knowledge
 ```
 
-**Response** (excerpt):
-```
-The FastAPI request lifecycle:
-
-1. Server Startup / Lifespan
-   - ASGI server starts and sends lifespan events
-   - Startup handlers initialize resources (DB connections, caches)
-
-2. Connection Accept
-   - ASGI server accepts TCP connection
-   - Creates scope dict with request metadata
-
-3. Middleware Stack
-   - Request flows through middleware (CORS, Auth, etc.)
-   - Each middleware can modify request or short-circuit
-
-4. Routing
-   - Match path + method to endpoint
-   - Extract path parameters
-
-5. Dependency Injection
-   - Resolve dependencies in topological order
-   - Cache results for reuse within request
-
-6. Validation
-   - Parse and validate path, query, body parameters
-   - Return 422 on validation errors
-
-7. Endpoint Execution
-   - Call the path operation function
-   - Await async functions
-
-8. Response Serialization
-   - Convert return value to response
-   - Apply response_model validation
-
-9. Cleanup
-   - Run yield dependency cleanup
-   - Execute background tasks
-```
-
 ---
 
-**Query**: "What design patterns are used in FastAPI's core and why?"
+**Query**: "What design patterns are used in the codebase?"
 
 ```bash
 curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "What design patterns are used in FastAPI core and why?"}'
+  -d '{"message": "What design patterns are used in the codebase?"}'
 ```
 
-**Response** (excerpt):
+**Agent Flow**:
 ```
-FastAPI uses several design patterns:
-
-1. Dependency Injection / IoC
-   - Where: fastapi/dependencies/*
-   - Why: Testability, loose coupling, request-scoped lifecycle
-
-2. Decorator Pattern
-   - Where: @app.get(), @app.post() in routing.py
-   - Why: Declarative route registration, introspection for docs
-
-3. Adapter/Facade
-   - Where: FastAPI wrapping Starlette
-   - Why: Simpler API, adds validation layer
-
-4. Chain of Responsibility
-   - Where: Middleware stack
-   - Why: Composable request processing
-
-5. Factory/Strategy
-   - Where: Response classes, security schemes
-   - Why: Configurable behavior
+Orchestrator
+  ├─→ Intent: "patterns"
+  ├─→ Code Analyst Agent
+  │     └─→ Analyze patterns across indexed files
+  └─→ Synthesis: Lists design patterns with examples and locations
 ```
 
 ---
@@ -524,14 +501,14 @@ Agents communicate using the Model Context Protocol (MCP) over HTTP (FastMCP 2.1
 # API Gateway connects to orchestrator via HTTP
 async with Client("http://orchestrator-agent:8004/mcp") as client:
     result = await client.call_tool("synthesize_response", {
-        "query": "What is FastAPI?",
+        "query": "What is the Router class?",
         "session_id": "abc-123"
     })
 
 # Orchestrator connects to graph query agent via HTTP
 async with Client("http://graph-query-agent:8001/mcp") as client:
     result = await client.call_tool("find_entity", {
-        "name": "FastAPI"
+        "name": "Router"
     })
 ```
 
@@ -583,8 +560,8 @@ async def execute_query(query: str) -> dict:
 **Indexer Agent Tools**:
 ```python
 @mcp.tool
-async def index_repo() -> dict:
-    """Index the full FastAPI repository."""
+async def index_repo(repo_url: Optional[str] = None) -> dict:
+    """Index a GitHub repository. Pass a repo_url or uses the configured default."""
 
 @mcp.tool
 async def index_single_file(path: str) -> dict:
@@ -601,36 +578,36 @@ async def index_status() -> dict:
 async def synthesize_response(query: str, session_id: str = None):
     # 1. Classify intent
     analysis = await route(query)  # Uses LLM (or quick check for greetings)
-    
+
     # 2. Handle greetings instantly (no agent calls)
     if analysis.get("intent") == "greeting" or not analysis.get("agents"):
         return {
             "session_id": session_id,
             "response": get_greeting_response(query)
         }
-    
+
     # 3. Extract entities
     extracted = await extract_entities(query)  # Uses LLM
-    
+
     # 4. Call appropriate agents
     agent_outputs = {}
-    
+
     if "graph_query" in analysis["agents"]:
         if extracted["query_type"] == "find_entity":
             agent_outputs["graph_query"] = await find_entity(extracted["entity_name"])
         elif extracted["query_type"] == "get_dependencies":
             agent_outputs["graph_query"] = await get_dependencies(extracted["entity_name"])
         # ... other query types
-    
+
     if "code_analyst" in analysis["agents"]:
         agent_outputs["code_analyst"] = await explain(extracted["entity_name"] or query)
-    
+
     # 5. Synthesize final response
     final_response = await synthesize(query, agent_outputs)  # Uses LLM
-    
+
     # 6. Store in conversation memory
     memory.add_turn(session_id, query, final_response)
-    
+
     # 7. Return clean response format
     return {"session_id": session_id, "response": final_response}
 ```
@@ -693,8 +670,9 @@ CALL db.schema.visualization()
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
+| `/` | GET | Web UI |
 | `/api/chat` | POST | Send a query to the multi-agent system |
-| `/api/index/start` | POST | Start indexing the repository |
+| `/api/index/start` | POST | Start indexing a repository (pass `repo_url` in body) |
 | `/api/index/status/{job_id}` | GET | Check indexing job status |
 | `/api/agents/health` | GET | Check health of all agents |
 | `/api/graph/statistics` | GET | Get graph database statistics |
@@ -703,33 +681,33 @@ CALL db.schema.visualization()
 
 1. **Check agent subprocess output**:
    ```bash
-   docker logs fastapi-repo-api 2>&1 | grep -E "(ERROR|Exception|Traceback)"
+   docker logs repo-chat-api 2>&1 | grep -E "(ERROR|Exception|Traceback)"
    ```
 
 2. **Test individual agents**:
    ```bash
-   docker exec -it fastapi-repo-api python3 -c "
+   docker exec -it repo-chat-api python3 -c "
    import asyncio
    from fastmcp import Client
-   
+
    async def test():
        async with Client('/app/indexer-agent/indexer_mcp.py') as client:
            tools = await client.list_tools()
            print([t.name for t in tools])
-   
+
    asyncio.run(test())
    "
    ```
 
 3. **Query Neo4j directly**:
    ```bash
-   docker exec -it fastapi-repo-neo4j cypher-shell -u neo4j -p password \
+   docker exec -it repo-chat-neo4j cypher-shell -u neo4j -p password \
      "MATCH (n) RETURN labels(n), count(n)"
    ```
 
 4. **Check environment variables**:
    ```bash
-   docker exec fastapi-repo-api env | grep -E "(NEO4J|OPENAI|LLM)"
+   docker exec repo-chat-api env | grep -E "(NEO4J|OPENAI|LLM|REPO)"
    ```
 
 ---
@@ -738,9 +716,9 @@ CALL db.schema.visualization()
 
 - [ ] Streaming responses for long answers
 - [ ] Vector embeddings for semantic code search
-- [ ] Support for multiple repositories
-- [ ] Web UI for interactive exploration
+- [ ] Multi-language AST support (JS/TS, Go, Rust, Java)
 - [ ] Caching layer for frequently asked questions
 - [ ] More relationship types (type annotations, decorators)
-- [ ] Code snippet extraction and highlighting
-
+- [ ] Code snippet extraction and syntax highlighting
+- [ ] Graph visualization in the Web UI
+- [ ] Authentication for production use

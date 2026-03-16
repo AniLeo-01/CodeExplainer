@@ -1,15 +1,17 @@
-# FastAPI Repo Chat Agent
+# GitHub Repo Chat Agent
 
-A multi-agent system that indexes, analyzes, and answers questions about the FastAPI codebase using a knowledge graph and LLM-powered reasoning.
+A multi-agent system that indexes, analyzes, and answers questions about **any GitHub repository** using a knowledge graph and LLM-powered reasoning. Comes with a built-in web UI for indexing repos and chatting with your codebase.
 
 ## Features
 
-- 🤖 **Microservices Architecture**: Each agent runs as a separate container for independent scaling
-- 🔍 **Knowledge Graph**: Neo4j-powered code entity and relationship storage
-- 💬 **Natural Language Queries**: Ask questions about FastAPI in plain English
-- 🧠 **LLM-Powered Synthesis**: Intelligent response generation using GPT models
-- ⚡ **Smart Greeting Detection**: Instant responses for simple greetings without agent calls
-- 🐳 **Docker Ready**: One-command deployment with `docker compose up`
+- **Any GitHub Repository**: Index and analyze any public GitHub repo — not limited to a single project
+- **Web UI**: Built-in dark-themed chat interface with repo indexing, status tracking, and graph stats
+- **Microservices Architecture**: Each agent runs as a separate container for independent scaling
+- **Knowledge Graph**: Neo4j-powered code entity and relationship storage
+- **Natural Language Queries**: Ask questions about your codebase in plain English
+- **LLM-Powered Synthesis**: Intelligent response generation using GPT models
+- **Smart Greeting Detection**: Instant responses for simple greetings without agent calls
+- **Docker Ready**: One-command deployment with `docker compose up`
 
 ---
 
@@ -17,6 +19,7 @@ A multi-agent system that indexes, analyzes, and answers questions about the Fas
 
 - [Architecture Overview](#architecture-overview)
 - [Setup and Installation](#setup-and-installation)
+- [Web UI](#web-ui)
 - [Agent Documentation](#agent-documentation)
 - [API Documentation](#api-documentation)
 - [Design Decisions](#design-decisions)
@@ -31,7 +34,7 @@ A multi-agent system that indexes, analyzes, and answers questions about the Fas
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                                   CLIENT                                        │
-│                            (HTTP Requests)                                      │
+│                     (Web UI at / or HTTP Requests)                              │
 └─────────────────────────────────────────────────────────────────────────────────┘
                                        │
                                        ▼
@@ -41,6 +44,9 @@ A multi-agent system that indexes, analyzes, and answers questions about the Fas
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
 │  │  /api/chat   │  │ /api/index/* │  │/api/agents/* │  │ /api/graph/* │         │
 │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘         │
+│  ┌──────────────────────────────────────────────────────────────────────┐        │
+│  │  Static Files: /static/*  ·  Web UI: /                               │        │
+│  └──────────────────────────────────────────────────────────────────────┘        │
 └─────────────────────────────────────────────────────────────────────────────────┘
                                        │
                            FastMCP Client (HTTP)
@@ -116,48 +122,48 @@ A multi-agent system that indexes, analyzes, and answers questions about the Fas
 │                                                                                 │
 │  Example 2: Complex Query                                                        │
 │  ──────────────────────────────────────────────────────────────────────────────│
-│  User Query: "What is the FastAPI class?"                                       │
+│  User Query: "What is the Router class?"                                        │
 │       │                                                                         │
 │       ▼                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐            │
 │  │ 1. GREETING DETECTION (LLM)                                     │            │
-│  │    Input:  "What is the FastAPI class?"                         │            │
+│  │    Input:  "What is the Router class?"                          │            │
 │  │    Output: { is_greeting: false }                               │            │
 │  └─────────────────────────────────────────────────────────────────┘            │
 │       │                                                                         │
 │       ▼                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐            │
 │  │ 2. INTENT CLASSIFICATION (LLM)                                  │            │
-│  │    Input:  "What is the FastAPI class?"                         │            │
+│  │    Input:  "What is the Router class?"                          │            │
 │  │    Output: { intent: "lookup", agents: ["graph_query"] }        │            │
 │  └─────────────────────────────────────────────────────────────────┘            │
 │       │                                                                         │
 │       ▼                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐            │
 │  │ 3. ENTITY EXTRACTION (LLM)                                      │            │
-│  │    Input:  "What is the FastAPI class?"                         │            │
-│  │    Output: { entity_name: "FastAPI", query_type: "find_entity" }│            │
+│  │    Input:  "What is the Router class?"                          │            │
+│  │    Output: { entity_name: "Router", query_type: "find_entity" } │            │
 │  └─────────────────────────────────────────────────────────────────┘            │
 │       │                                                                         │
 │       ▼                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐            │
 │  │ 4. AGENT DISPATCH (HTTP)                                         │            │
 │  │    Route to: Graph Query Agent (http://graph-query-agent:8001) │            │
-│  │    Tool:     find_entity("FastAPI")                             │            │
+│  │    Tool:     find_entity("Router")                              │            │
 │  └─────────────────────────────────────────────────────────────────┘            │
 │       │                                                                         │
 │       ▼                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐            │
 │  │ 5. GRAPH QUERY (Neo4j)                                          │            │
-│  │    Cypher: MATCH (c:Class {name: 'FastAPI'}) RETURN c           │            │
-│  │    Result: { file: "fastapi/applications.py", lines: 48-4669 }  │            │
+│  │    Cypher: MATCH (c:Class {name: 'Router'}) RETURN c            │            │
+│  │    Result: { file: "myproject/routing.py", lines: 10-120 }      │            │
 │  └─────────────────────────────────────────────────────────────────┘            │
 │       │                                                                         │
 │       ▼                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐            │
 │  │ 6. RESPONSE SYNTHESIS (LLM)                                    │            │
 │  │    Combines: Graph results + LLM knowledge                      │            │
-│  │    Output:   Comprehensive explanation of FastAPI class         │            │
+│  │    Output:   Comprehensive explanation of the Router class      │            │
 │  └─────────────────────────────────────────────────────────────────┘            │
 │       │                                                                         │
 │       ▼                                                                         │
@@ -239,29 +245,15 @@ docker compose up -d
 # - orchestrator-agent (port 8004)
 # - api-gateway (port 8000)
 
-# 4. Verify services are running
+# 4. Open the Web UI
+open http://localhost:8000
+
+# Or verify services via CLI
 docker compose ps
-
-# Expected output:
-# NAME                                    STATUS              PORTS
-# fastapi-repo-api                        Up                  0.0.0.0:8000->8000/tcp
-# fastapi-repo-neo4j                      Up (healthy)        0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp
-# fastapi-repo-chat-agent-orchestrator... Up                  8004/tcp
-# fastapi-repo-chat-agent-graph-query...  Up                  8001/tcp
-# fastapi-repo-chat-agent-code-analyst... Up                  8002/tcp
-# fastapi-repo-chat-agent-indexer-agent   Up                  8003/tcp
-
-# 4b. Scale agents independently (optional)
-docker compose up -d --scale graph-query-agent=3
-
-# 5. Check agent health
 curl http://localhost:8000/api/agents/health
 
-# 6. Start indexing
-curl -X POST http://localhost:8000/api/index/start
-
-# 7. Monitor indexing (replace JOB_ID)
-curl http://localhost:8000/api/index/status/{JOB_ID}
+# 5. Scale agents independently (optional)
+docker compose up -d --scale graph-query-agent=3
 ```
 
 ### Option 2: Local Development
@@ -286,7 +278,7 @@ docker run -d \
 # orchestrator-agent/.env
 cat > orchestrator-agent/.env << EOF
 OPENAI_API_KEY=sk-your-key-here
-LLM_MODEL_ID=gpt-5-mini
+LLM_MODEL_ID=gpt-4o-mini
 EOF
 
 # indexer-agent/.env, graph-query-agent/.env, code-analyst-agent/.env
@@ -295,19 +287,43 @@ EOF
 # 5. Start the API Gateway
 cd api-gateway
 uvicorn app.main:app --reload --port 8000
+
+# 6. Open Web UI at http://localhost:8000
 ```
 
 ### Environment Variables Reference
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `OPENAI_API_KEY` | ✅ Yes | - | OpenAI API key for LLM calls |
+| `OPENAI_API_KEY` | Yes | - | OpenAI API key for LLM calls |
 | `LLM_MODEL_ID` | No | `gpt-4o-mini` | Model for intent/synthesis |
 | `NEO4J_URI` | No | `bolt://localhost:7687` | Neo4j connection string |
 | `NEO4J_USER` | No | `neo4j` | Neo4j username |
 | `NEO4J_PASSWORD` | No | `password` | Neo4j password |
-| `FASTAPI_REPO_URL` | No | FastAPI GitHub | Repository to index |
-| `REPO_DIR` | No | `/tmp/fastapi-repo` | Local clone directory |
+| `REPO_URL` | No | _(none)_ | Default repository URL (can also be set via UI) |
+| `REPO_DIR` | No | `/tmp/repo-cache` | Base directory for cloned repositories |
+
+---
+
+## Web UI
+
+The application includes a built-in web interface served at `http://localhost:8000/`.
+
+### Features
+
+- **Repository Indexing**: Enter any GitHub repository URL and click "Index Repository" to start
+- **Progress Tracking**: Real-time status bar showing indexing progress (running/completed/failed)
+- **Chat Interface**: Ask natural language questions about the indexed codebase
+- **Session Management**: Conversations maintain context across messages
+- **Graph Statistics**: Live display of nodes and relationships in the knowledge graph
+- **Agent Health Monitoring**: Auto-refreshing health status of all agents
+
+### Usage
+
+1. Open `http://localhost:8000` in your browser
+2. Enter a GitHub repository URL in the sidebar (e.g., `https://github.com/pallets/flask.git`)
+3. Click **Index Repository** and wait for indexing to complete
+4. Start asking questions in the chat panel
 
 ---
 
@@ -379,12 +395,12 @@ orchestrator-agent/
 **Example Usage**:
 
 ```python
-# Find a class
-await client.call_tool("find_entity", {"name": "FastAPI"})
+# Find a class in any indexed repo
+await client.call_tool("find_entity", {"name": "Router"})
 
 # Find subclasses
 await client.call_tool("find_related", {
-    "name": "BaseModel", 
+    "name": "BaseModel",
     "relationship": "INHERITS_FROM"
 })
 
@@ -429,7 +445,7 @@ code-analyst-agent/
 
 ### Indexer Agent
 
-**Purpose**: Clone repositories, parse Python AST, and populate the knowledge graph.
+**Purpose**: Clone any GitHub repository, parse Python AST, and populate the knowledge graph.
 
 **Location**: `indexer-agent/`
 
@@ -437,7 +453,7 @@ code-analyst-agent/
 
 | Tool | Parameters | Description |
 |------|------------|-------------|
-| `index_repo` | - | Index the full FastAPI repository |
+| `index_repo` | `repo_url: str` (optional) | Index a GitHub repository by URL |
 | `index_single_file` | `path: str` | Index a specific Python file |
 | `parse_ast` | `path: str` | Return AST node count for a file |
 | `extract_code_entities` | `path: str` | Extract entities and push to Neo4j |
@@ -446,19 +462,25 @@ code-analyst-agent/
 **Indexing Pipeline**:
 
 ```
-1. Clone/Pull Repository (GitPython)
+1. Receive repo_url (via UI, API, or env var)
        │
        ▼
-2. Discover *.py files (pathlib.rglob)
+2. Derive unique local directory: /tmp/repo-cache/<slug>-<hash>
        │
        ▼
-3. For each file (batched, 3 concurrent):
+3. Clone/Pull Repository (GitPython)
+       │
+       ▼
+4. Discover *.py files (pathlib.rglob)
+       │
+       ▼
+5. For each file (batched, 3 concurrent):
    ├── Parse AST (ast.parse)
    ├── Extract classes, functions, imports
    └── Create Neo4j nodes & relationships
        │
        ▼
-4. Return { indexed_files: N }
+6. Return { indexed_files: N, repo_url: "...", repo_dir: "..." }
 ```
 
 ---
@@ -472,7 +494,7 @@ Send a natural language query to the multi-agent system.
 **Request**:
 ```json
 {
-    "message": "What is the FastAPI class?",
+    "message": "What is the Router class?",
     "session_id": "optional-session-id"
 }
 ```
@@ -481,7 +503,7 @@ Send a natural language query to the multi-agent system.
 ```json
 {
     "session_id": "uuid",
-    "response": "The FastAPI class is..."
+    "response": "The Router class is..."
 }
 ```
 
@@ -491,16 +513,21 @@ Send a natural language query to the multi-agent system.
 ```bash
 curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "What is the FastAPI class?"}'
+  -d '{"message": "What classes are in the project?"}'
 ```
 
 ---
 
 ### POST /api/index/start
 
-Start indexing the configured repository.
+Start indexing a GitHub repository.
 
-**Request**: No body required
+**Request**:
+```json
+{
+    "repo_url": "https://github.com/pallets/flask.git"
+}
+```
 
 **Response**:
 ```json
@@ -519,7 +546,7 @@ Check the status of an indexing job.
 ```json
 {
     "job_id": "a88f1e2f-a7bc-45f8-9a79-445c0acae726",
-    "status": "completed",  // "running", "failed", "completed"
+    "status": "completed",
     "error": null,
     "updated_at": "2026-01-03T00:11:51.201093"
 }
@@ -612,6 +639,16 @@ Two-stage approach chosen for accuracy:
 
 **Trade-off**: Two LLM calls instead of one, but significantly better accuracy for complex queries.
 
+### Dynamic Repository Management
+
+Each indexed repository gets a unique local directory derived from its URL:
+
+```
+/tmp/repo-cache/<repo-slug>-<url-hash>/
+```
+
+This ensures multiple repositories can be indexed without conflicts. The URL hash prevents collisions between similarly-named repos from different owners.
+
 ### Greeting Detection for Performance
 
 Simple greetings are detected early to avoid unnecessary agent calls:
@@ -645,9 +682,8 @@ def _get_neo4j_default():
 
 | Limitation | Impact | Workaround |
 |------------|--------|------------|
+| **Python-only AST parsing** | Only indexes `.py` files | Other languages not supported yet |
 | **No streaming responses** | Long answers appear all at once | Wait for complete response |
-| **Single repository support** | Can only index one repo at a time | Re-index to switch repos |
-| **Limited relationship extraction** | Not all code relationships captured | Use raw Cypher for complex queries |
 | **No semantic code search** | Relies on exact entity names | Use broader search terms |
 | **HTTP network latency** | Agent calls add ~10-50ms overhead | Acceptable trade-off for microservices benefits |
 | **Neo4j deadlocks with high concurrency** | Indexing may fail | Reduced to 3 concurrent file indexes |
@@ -658,8 +694,7 @@ def _get_neo4j_default():
 |---------|----------|-------------|
 | **Streaming Responses** | High | Server-sent events for progressive output |
 | **Vector Embeddings** | High | Semantic search using code embeddings |
-| **Multi-Repo Support** | Medium | Index and query multiple repositories |
-| **Web UI** | Medium | Interactive chat interface and graph explorer |
+| **Multi-Language Support** | Medium | Support for JS/TS, Go, Rust, Java AST parsing |
 | **Caching Layer** | Medium | Redis cache for frequent queries |
 | **More Relationships** | Low | Type annotations, decorators, exceptions |
 | **Code Snippet Highlighting** | Low | Syntax-highlighted code in responses |
@@ -670,9 +705,10 @@ def _get_neo4j_default():
 Contributions welcome! Areas that need help:
 
 1. **Better AST parsing** - Extract more relationship types
-2. **Performance optimization** - Reduce LLM call latency
-3. **Test coverage** - Unit and integration tests
-4. **Documentation** - More examples and tutorials
+2. **Multi-language support** - Add parsers for other languages
+3. **Performance optimization** - Reduce LLM call latency
+4. **Test coverage** - Unit and integration tests
+5. **UI enhancements** - Graph visualization, code highlighting
 
 ---
 
@@ -701,32 +737,36 @@ docker compose up -d --build api-gateway orchestrator-agent
 open http://localhost:7474
 
 # Run Cypher query
-docker exec -it fastapi-repo-neo4j cypher-shell -u neo4j -p password \
+docker exec -it repo-chat-neo4j cypher-shell -u neo4j -p password \
   "MATCH (n) RETURN labels(n), count(n)"
 ```
 
 ### Example Queries
 
 ```bash
-# Simple
-"What is the FastAPI class?"
-"Find the Depends function"
+# Index a repo via CLI
+curl -X POST http://localhost:8000/api/index/start \
+  -H "Content-Type: application/json" \
+  -d '{"repo_url": "https://github.com/pallets/flask.git"}'
 
-# Medium
-"What classes inherit from APIRouter?"
-"What does the Router class depend on?"
+# Ask questions
+curl -X POST http://localhost:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What classes are defined in the project?"}'
 
-# Complex
-"Explain the complete lifecycle of a FastAPI request"
-"What design patterns are used in FastAPI core?"
-"Compare how Path and Query parameters are implemented"
+# More example questions (works with any indexed repo)
+"What is the main application class?"
+"Find all async functions"
+"What classes inherit from BaseModel?"
+"Explain the request handling flow"
+"What design patterns are used in the codebase?"
 ```
 
 ---
 
 ## Acknowledgments
 
-- [FastAPI](https://fastapi.tiangolo.com/) - The framework being analyzed
 - [FastMCP](https://gofastmcp.com/) - Agent communication protocol
 - [Neo4j](https://neo4j.com/) - Graph database
 - [OpenAI](https://openai.com/) - LLM provider
+- [FastAPI](https://fastapi.tiangolo.com/) - API gateway framework
