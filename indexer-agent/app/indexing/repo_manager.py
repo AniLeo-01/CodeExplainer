@@ -1,5 +1,6 @@
 # apps/indexer-agent/app/indexing/repository_manager.py
 import asyncio
+import hashlib
 import shutil
 from functools import partial
 from git import Repo, InvalidGitRepositoryError
@@ -7,54 +8,63 @@ from pathlib import Path
 from ..config import settings
 from ..indexing.file_indexer import index_file
 
-def _update_repo_sync():
-    """Synchronous git operations (run in executor)."""
-    repo_dir = Path(settings.REPO_DIR)
-    git_dir = repo_dir / ".git"
-    
-    if git_dir.exists():
-        # Valid git repo exists, pull latest
-        try:
-            Repo(settings.REPO_DIR).remotes.origin.pull()
-        except Exception:
-            # If pull fails, re-clone
-            shutil.rmtree(repo_dir, ignore_errors=True)
-            Repo.clone_from(settings.FASTAPI_REPO_URL, settings.REPO_DIR)
-    else:
-        # No git repo, remove any existing files and clone fresh
-        if repo_dir.exists():
-            shutil.rmtree(repo_dir, ignore_errors=True)
-        Repo.clone_from(settings.FASTAPI_REPO_URL, settings.REPO_DIR)
 
-async def update_repo():
+def _repo_dir_for_url(repo_url: str) -> str:
+    """Derive a unique repo directory from the URL."""
+    slug = repo_url.rstrip("/").rstrip(".git").split("/")[-1]
+    url_hash = hashlib.md5(repo_url.encode()).hexdigest()[:8]
+    return str(Path(settings.REPO_DIR) / f"{slug}-{url_hash}")
+
+
+def _update_repo_sync(repo_url: str, repo_dir: str):
+    """Synchronous git operations (run in executor)."""
+    repo_path = Path(repo_dir)
+    git_dir = repo_path / ".git"
+
+    if git_dir.exists():
+        try:
+            Repo(repo_dir).remotes.origin.pull()
+        except Exception:
+            shutil.rmtree(repo_path, ignore_errors=True)
+            Repo.clone_from(repo_url, repo_dir)
+    else:
+        if repo_path.exists():
+            shutil.rmtree(repo_path, ignore_errors=True)
+        Repo.clone_from(repo_url, repo_dir)
+
+
+async def update_repo(repo_url: str, repo_dir: str):
     """Run git operations in thread pool to avoid blocking."""
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, _update_repo_sync)
+    await loop.run_in_executor(None, _update_repo_sync, repo_url, repo_dir)
 
-async def index_repository():
-    # clones the repository from the URL in the settings
-    await update_repo()
-    py_files = list(Path(settings.REPO_DIR).rglob("*.py"))
-    
-    # Index files sequentially to avoid Neo4j deadlocks
-    # Batch processing with limited concurrency
+
+async def index_repository(repo_url: str | None = None):
+    """Clone/pull a repository and index all Python files."""
+    url = repo_url or settings.REPO_URL
+    if not url:
+        return {"error": "No repository URL provided. Pass a repo_url parameter or set REPO_URL env var."}
+
+    repo_dir = _repo_dir_for_url(url)
+    await update_repo(url, repo_dir)
+
+    py_files = list(Path(repo_dir).rglob("*.py"))
+
     indexed = 0
-    batch_size = 3  # Small batches to avoid deadlocks
-    
+    batch_size = 3
+
     for i in range(0, len(py_files), batch_size):
         batch = py_files[i:i + batch_size]
         try:
             await asyncio.gather(*[index_file(str(f)) for f in batch])
             indexed += len(batch)
         except Exception as e:
-            # Log but continue with next batch
             print(f"Batch indexing error: {e}")
-            # Try indexing files one by one in failed batch
             for f in batch:
                 try:
                     await index_file(str(f))
                     indexed += 1
                 except Exception:
-                    pass  # Skip failed files
-    
-    return {"indexed_files": indexed}
+                    pass
+
+    return {"indexed_files": indexed, "repo_url": url, "repo_dir": repo_dir}

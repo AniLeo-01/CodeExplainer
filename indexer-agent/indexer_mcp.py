@@ -1,5 +1,6 @@
 import ast
 import os
+from typing import Optional
 from fastmcp import FastMCP
 from app.indexing.repo_manager import index_repository
 from app.indexing.file_indexer import index_file
@@ -9,9 +10,9 @@ from app.indexing.entity_extractor import extract_entities
 mcp = FastMCP(name="Indexer Agent")
 
 @mcp.tool
-async def index_repo() -> dict:
-    """Index the full FastAPI repository."""
-    return await index_repository()
+async def index_repo(repo_url: Optional[str] = None) -> dict:
+    """Index a GitHub repository. Pass a repo_url or uses the configured default."""
+    return await index_repository(repo_url)
 
 @mcp.tool
 async def index_single_file(path: str) -> dict:
