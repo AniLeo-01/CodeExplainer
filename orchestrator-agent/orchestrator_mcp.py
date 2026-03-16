@@ -125,21 +125,21 @@ async def synthesize_response(
     # ---------------------------------------------
     if analysis.get("intent") == "greeting" or not analysis.get("agents"):
         greeting_responses = {
-            "hi": "Hello! I'm a FastAPI codebase assistant. How can I help you explore the FastAPI repository?",
-            "hello": "Hi there! I can help you understand the FastAPI codebase. What would you like to know?",
-            "hey": "Hey! Ready to help you explore FastAPI. What are you curious about?",
+            "hi": "Hello! I'm a codebase assistant. How can I help you explore the indexed repository?",
+            "hello": "Hi there! I can help you understand the indexed codebase. What would you like to know?",
+            "hey": "Hey! Ready to help you explore the codebase. What are you curious about?",
             "thanks": "You're welcome! Let me know if you have more questions.",
-            "thank you": "Happy to help! Feel free to ask more questions about FastAPI.",
-            "bye": "Goodbye! Come back anytime you have questions about FastAPI.",
+            "thank you": "Happy to help! Feel free to ask more questions about the codebase.",
+            "bye": "Goodbye! Come back anytime you have questions.",
             "goodbye": "See you later! Happy coding!",
-            "ok": "Got it! What would you like to know about FastAPI?",
-            "okay": "Alright! Feel free to ask me anything about the FastAPI codebase.",
-            "yes": "Great! What would you like to explore in the FastAPI repository?",
+            "ok": "Got it! What would you like to know about the codebase?",
+            "okay": "Alright! Feel free to ask me anything about the indexed repository.",
+            "yes": "Great! What would you like to explore in the repository?",
             "no": "No problem. Let me know when you have questions!",
             "sure": "Perfect! What can I help you with?",
         }
         query_lower = query.lower().strip().rstrip('!?.')
-        response = greeting_responses.get(query_lower, f"Hi! I'm here to help you explore the FastAPI codebase. Ask me about classes, functions, or how things work!")
+        response = greeting_responses.get(query_lower, "Hi! I'm here to help you explore the indexed codebase. Ask me about classes, functions, or how things work!")
         
         memory.add_turn(session_id=session_id, query=query, response=response)
         return {"session_id": session_id, "response": response}

@@ -11,5 +11,6 @@ class ChatResponse(BaseModel):
     response: Any
 
 class IndexRequest(BaseModel):
-    path: str
+    repo_url: Optional[str] = None
+    path: Optional[str] = None
     incremental: bool = False

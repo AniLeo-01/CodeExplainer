@@ -16,8 +16,8 @@ def _get_neo4j_default():
 
 
 class Settings(BaseSettings):
-    FASTAPI_REPO_URL: str = "https://github.com/fastapi/fastapi.git"
-    REPO_DIR: str = "/tmp/fastapi-repo"
+    REPO_URL: str = ""
+    REPO_DIR: str = "/tmp/repo-cache"
     NEO4J_URI: str = _get_neo4j_default()
     NEO4J_USER: str = "neo4j"
     NEO4J_PASSWORD: str = "password"

@@ -10,11 +10,23 @@ async def get_code_snippet(file_path: str, start: int, end: int, context: int = 
     """
     if file_path is None:
         raise ValueError("file_path cannot be None")
-    full_path = file_path if file_path.startswith("/") else f"{settings.REPO_ROOT}/{file_path}"
 
-    # Check if file exists before trying to open
+    # Use absolute path as-is; prefix with REPO_ROOT for relative paths
+    if file_path.startswith("/"):
+        full_path = file_path
+    else:
+        # Try REPO_ROOT and its subdirectories for relative paths
+        full_path = os.path.join(settings.REPO_ROOT, file_path)
+        if not os.path.exists(full_path):
+            # Search subdirectories of REPO_ROOT (repos are stored in subdirs)
+            for entry in os.scandir(settings.REPO_ROOT):
+                if entry.is_dir():
+                    candidate = os.path.join(entry.path, file_path)
+                    if os.path.exists(candidate):
+                        full_path = candidate
+                        break
+
     if not os.path.exists(full_path):
-        # Provide helpful error message
         repo_root_exists = os.path.exists(settings.REPO_ROOT)
         raise FileNotFoundError(
             f"File not found: {full_path}\n"

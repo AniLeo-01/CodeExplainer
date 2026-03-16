@@ -16,7 +16,7 @@ def get_client() -> AsyncOpenAI:
 # ---------------------------------------------------------
 # Intent Classification
 # ---------------------------------------------------------
-INTENT_SYSTEM_PROMPT = """You are an intent classifier for a code repository chat agent about FastAPI.
+INTENT_SYSTEM_PROMPT = """You are an intent classifier for a code repository chat agent.
 
 Analyze the user's query and return a JSON object with:
 - "intent": one of "greeting", "explain", "compare", "lookup", "patterns", or "general"
@@ -28,7 +28,7 @@ Guidelines:
 - "compare" (differences, comparisons): use ["graph_query", "code_analyst"]
 - "lookup" (find, where, list items): use ["graph_query"]
 - "patterns" (design patterns, code patterns): use ["code_analyst"]
-- "general" (substantive questions about FastAPI/code): use ["graph_query", "code_analyst"]
+- "general" (substantive questions about the codebase): use ["graph_query", "code_analyst"]
 
 IMPORTANT: Simple conversational messages like "hi", "hello", "thanks", "ok", "bye" should be classified as "greeting" with agents: []
 
@@ -71,16 +71,16 @@ Given a natural language query about code, extract:
 - "relationship": if query_type is "find_related", one of: CONTAINS, IMPORTS, CALLS, INHERITS_FROM, DECORATED_BY (or null)
 
 Examples:
-- "Find the FastAPI class" → {"entity_name": "FastAPI", "secondary_entity": null, "query_type": "find_entity", "relationship": null}
+- "Find the App class" → {"entity_name": "App", "secondary_entity": null, "query_type": "find_entity", "relationship": null}
 - "What does the Router class do?" → {"entity_name": "Router", "secondary_entity": null, "query_type": "find_entity", "relationship": null}
-- "What classes inherit from APIRouter?" → {"entity_name": "APIRouter", "secondary_entity": null, "query_type": "find_related", "relationship": "INHERITS_FROM"}
+- "What classes inherit from BaseClass?" → {"entity_name": "BaseClass", "secondary_entity": null, "query_type": "find_related", "relationship": "INHERITS_FROM"}
 - "Find all decorators used in routing module" → {"entity_name": "routing", "secondary_entity": null, "query_type": "find_related", "relationship": "DECORATED_BY"}
-- "What does FastAPI depend on?" → {"entity_name": "FastAPI", "secondary_entity": null, "query_type": "get_dependencies", "relationship": null}
-- "What uses the Depends function?" → {"entity_name": "Depends", "secondary_entity": null, "query_type": "get_dependents", "relationship": null}
+- "What does MyClass depend on?" → {"entity_name": "MyClass", "secondary_entity": null, "query_type": "get_dependencies", "relationship": null}
+- "What uses the helper function?" → {"entity_name": "helper", "secondary_entity": null, "query_type": "get_dependents", "relationship": null}
 - "How does dependency injection work?" → {"entity_name": null, "secondary_entity": null, "query_type": "general_query", "relationship": null}
-- "What design patterns are used in FastAPI core?" → {"entity_name": null, "secondary_entity": null, "query_type": "general_query", "relationship": null}
-- "Explain the complete lifecycle of a FastAPI request" → {"entity_name": null, "secondary_entity": null, "query_type": "general_query", "relationship": null}
-- "Compare how Path and Query parameters are implemented" → {"entity_name": "Path", "secondary_entity": "Query", "query_type": "find_entity", "relationship": null}
+- "What design patterns are used in the core?" → {"entity_name": null, "secondary_entity": null, "query_type": "general_query", "relationship": null}
+- "Explain the complete lifecycle of a request" → {"entity_name": null, "secondary_entity": null, "query_type": "general_query", "relationship": null}
+- "Compare how Path and Query are implemented" → {"entity_name": "Path", "secondary_entity": "Query", "query_type": "find_entity", "relationship": null}
 
 Return ONLY valid JSON, no other text."""
 
@@ -102,17 +102,17 @@ async def extract_entities(query: str) -> dict:
 # ---------------------------------------------------------
 # Response Synthesis
 # ---------------------------------------------------------
-SYNTHESIS_SYSTEM_PROMPT = """You are a helpful assistant that answers questions about the FastAPI codebase and framework.
+SYNTHESIS_SYSTEM_PROMPT = """You are a helpful assistant that answers questions about a code repository.
 
 When given query results from a code repository:
 - If results contain actual code entities (classes, functions, files), explain them clearly with file paths
-- If results show "info" messages or "no specific entity", use your knowledge of FastAPI to answer
+- If results show "info" messages or "no specific entity", use your general programming knowledge to answer
 - If results contain errors, acknowledge them briefly and provide your best answer from general knowledge
 - For general/conceptual questions (design patterns, lifecycles, comparisons), provide comprehensive explanations
 - Be informative and include code examples when helpful
 - Structure long answers with clear sections
 
-You have deep knowledge of FastAPI, Starlette, Pydantic, and Python async programming."""
+You have deep knowledge of Python, software architecture, and common frameworks."""
 
 
 async def synthesize_response(query: str, agent_outputs: Dict[str, Any]) -> str:
@@ -146,10 +146,9 @@ async def synthesize_response(query: str, agent_outputs: Dict[str, Any]) -> str:
         prompt = f"""User query:
 {query}
 
-The codebase search returned no specific results. Please provide a comprehensive answer 
-based on your knowledge of FastAPI, Starlette, and Python best practices.
-Include specific examples, file locations (like fastapi/routing.py, fastapi/params.py), 
-and implementation details where relevant.
+The codebase search returned no specific results. Please provide a comprehensive answer
+based on your general programming knowledge and Python best practices.
+Include specific examples and implementation details where relevant.
 """
     else:
         prompt = f"""User query:
@@ -159,7 +158,7 @@ Agent outputs from codebase search:
 {formatted_outputs}
 
 Based on the above query and results, provide a comprehensive answer.
-Explain the findings and add context from your knowledge of FastAPI where helpful.
+Explain the findings and add context from your programming knowledge where helpful.
 """
 
     client = get_client()

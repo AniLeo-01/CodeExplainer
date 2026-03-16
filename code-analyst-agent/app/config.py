@@ -18,7 +18,7 @@ def _get_neo4j_default():
 
 
 class Settings(BaseSettings):
-    REPO_ROOT: str = "/tmp/fastapi-repo"  # where indexer cloned FastAPI
+    REPO_ROOT: str = "/tmp/repo-cache"  # where indexer clones repositories
     OPENAI_API_KEY: str | None = None
     LLM_MODEL_ID: str = "gpt-4o-mini"
     NEO4J_URI: str = _get_neo4j_default()

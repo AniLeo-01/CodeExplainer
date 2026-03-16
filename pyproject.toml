@@ -1,13 +1,13 @@
 [project]
-name = "fastapi-repo-chat-agent"
-version = "0.1.0"
-description = "A multi-agent system that indexes, analyzes, and answers questions about the FastAPI codebase using a knowledge graph and LLM-powered reasoning."
+name = "github-repo-chat-agent"
+version = "0.2.0"
+description = "A multi-agent system that indexes, analyzes, and answers questions about any GitHub repository using a knowledge graph and LLM-powered reasoning."
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
     { name = "Aniruddha" }
 ]
-keywords = ["fastapi", "multi-agent", "neo4j", "llm", "mcp", "knowledge-graph"]
+keywords = ["github", "multi-agent", "neo4j", "llm", "mcp", "knowledge-graph"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
